@@ -45,6 +45,9 @@ logs/
 # Storage (运行时数据，不应提交到仓库)
 backend/storage/
 
+# 历史周笔记（仅供本地参考，不进当前作业仓库）
+反思笔记-week04.md
+
 
 
 
