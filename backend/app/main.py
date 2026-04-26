@@ -11,7 +11,7 @@ import os
 from dotenv import load_dotenv
 from app.utils.logger import setup_logging
 
-load_dotenv()
+load_dotenv(override=True)
 
 # 初始化日志系统（在应用启动时配置）
 log_level = os.getenv("LOG_LEVEL", "INFO")
