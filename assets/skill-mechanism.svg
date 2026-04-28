@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1380" viewBox="0 0 1000 1380" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#475569"/>
+    </marker>
+    <style>
+      .title { font-size: 26px; font-weight: bold; fill: #0f172a; }
+      .phase { font-size: 16px; font-weight: bold; fill: #334155; }
+      .box-title { font-size: 17px; font-weight: bold; }
+      .box-detail { font-size: 13px; fill: #475569; }
+      .code { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 12px; fill: #1e40af; }
+      .annotation { font-size: 12px; font-style: italic; fill: #b45309; }
+      .conclusion { font-size: 13px; fill: #166534; font-weight: bold; }
+    </style>
+  </defs>
+
+  <!-- 标题 -->
+  <text x="500" y="40" text-anchor="middle" class="title">Skill 加载机制与 Progressive Loading</text>
+  <text x="500" y="65" text-anchor="middle" class="box-detail">PolyStudio · 调用链与 token 节约策略</text>
+
+  <!-- ========== 上半部分背景：启动/注入期 ========== -->
+  <rect x="40" y="90" width="920" height="600" rx="12" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="60" y="115" class="phase">① 注入期（每次 /chat 请求都触发，无缓存）</text>
+
+  <!-- Box 1: /chat 请求 -->
+  <rect x="350" y="135" width="300" height="60" rx="8" fill="#dbeafe" stroke="#3b82f6" stroke-width="2"/>
+  <text x="500" y="160" text-anchor="middle" class="box-title" fill="#1e3a8a">用户发起 /chat 请求</text>
+  <text x="500" y="180" text-anchor="middle" class="code">routers/chat.py</text>
+
+  <line x1="500" y1="200" x2="500" y2="230" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Box 2: create_agent -->
+  <rect x="320" y="235" width="360" height="70" rx="8" fill="#dbeafe" stroke="#3b82f6" stroke-width="2"/>
+  <text x="500" y="260" text-anchor="middle" class="box-title" fill="#1e3a8a">create_agent()</text>
+  <text x="500" y="280" text-anchor="middle" class="code">agent_service.py:111 (每次请求重建)</text>
+  <text x="500" y="297" text-anchor="middle" class="code">→ get_skills_context()  [agent_service.py:73]</text>
+
+  <line x1="500" y1="310" x2="500" y2="345" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Box 3: scan_available_skills -->
+  <rect x="290" y="350" width="420" height="80" rx="8" fill="#dbeafe" stroke="#3b82f6" stroke-width="2"/>
+  <text x="500" y="375" text-anchor="middle" class="box-title" fill="#1e3a8a">scan_available_skills()</text>
+  <text x="500" y="395" text-anchor="middle" class="code">skill_service.py:68</text>
+  <text x="500" y="415" text-anchor="middle" class="annotation">没有 @lru_cache、没有全局变量缓存 → 每次现读磁盘</text>
+
+  <line x1="500" y1="435" x2="500" y2="465" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Box 4: 解析 frontmatter -->
+  <rect x="270" y="470" width="460" height="90" rx="8" fill="#dbeafe" stroke="#3b82f6" stroke-width="2"/>
+  <text x="500" y="495" text-anchor="middle" class="box-title" fill="#1e3a8a">遍历 skills/{public,custom}/*/SKILL.md</text>
+  <text x="500" y="515" text-anchor="middle" class="box-detail">正则 + yaml.safe_load 解析 frontmatter</text>
+  <text x="500" y="535" text-anchor="middle" class="code">提取 5 个字段：name / description / id / source / md_path</text>
+  <text x="500" y="552" text-anchor="middle" class="annotation">注意：只读 frontmatter，正文从不读</text>
+
+  <line x1="500" y1="565" x2="500" y2="600" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Box 5: 注入 prompt -->
+  <rect x="220" y="605" width="560" height="70" rx="8" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+  <text x="500" y="630" text-anchor="middle" class="box-title" fill="#92400e">拼成 &lt;available_skills&gt; XML 块注入 system prompt</text>
+  <text x="500" y="650" text-anchor="middle" class="box-detail">每个 skill 仅 name + description + location（路径）</text>
+  <text x="500" y="668" text-anchor="middle" class="conclusion" fill="#92400e">→ system prompt token 占用 = O(skill 数量) × 常数（与 SKILL.md 长度无关）</text>
+
+  <!-- ========== 边界 ========== -->
+  <line x1="80" y1="715" x2="920" y2="715" stroke="#94a3b8" stroke-width="2" stroke-dasharray="8,6"/>
+  <rect x="350" y="700" width="300" height="30" fill="white"/>
+  <text x="500" y="720" text-anchor="middle" class="phase" fill="#0f766e">━━ Progressive Loading 边界 ━━</text>
+
+  <!-- ========== 下半部分背景：运行/按需加载期 ========== -->
+  <rect x="40" y="745" width="920" height="445" rx="12" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.5"/>
+  <text x="60" y="770" class="phase">② 运行期（Agent 自主决策按需加载）</text>
+
+  <!-- Box 6: LLM ReAct -->
+  <rect x="270" y="790" width="460" height="90" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+  <text x="500" y="815" text-anchor="middle" class="box-title" fill="#14532d">LLM 在 ReAct 循环中匹配意图</text>
+  <text x="500" y="838" text-anchor="middle" class="box-detail">读 system prompt 中的 description，判断是否匹配某个 skill</text>
+  <text x="500" y="858" text-anchor="middle" class="annotation">没匹配 → 直接回复，不加载任何 skill</text>
+  <text x="500" y="875" text-anchor="middle" class="annotation">匹配 → 进入下一步</text>
+
+  <line x1="500" y1="884" x2="500" y2="915" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Box 7: read_skill_file -->
+  <rect x="270" y="920" width="460" height="90" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+  <text x="500" y="945" text-anchor="middle" class="box-title" fill="#14532d">主动 emit 一个 tool call</text>
+  <text x="500" y="968" text-anchor="middle" class="code">read_skill_file_tool(path, start_line?, end_line?)</text>
+  <text x="500" y="985" text-anchor="middle" class="code">skill_tools.py:54</text>
+  <text x="500" y="1003" text-anchor="middle" class="annotation">返回 SKILL.md 全文（按需加载，可分段）</text>
+
+  <line x1="500" y1="1014" x2="500" y2="1045" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Box 8: 执行 -->
+  <rect x="270" y="1050" width="460" height="100" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+  <text x="500" y="1075" text-anchor="middle" class="box-title" fill="#14532d">按 SKILL.md 文字描述自主执行工具序列</text>
+  <text x="500" y="1098" text-anchor="middle" class="box-detail">"步骤 1 → 步骤 2 → 步骤 3" 仅作为 prompt 文字存在</text>
+  <text x="500" y="1118" text-anchor="middle" class="annotation">没有任何代码层面的硬编码执行器或调度器</text>
+  <text x="500" y="1136" text-anchor="middle" class="annotation">= 完全依赖 LLM instruction following</text>
+
+  <!-- A3 关键结论横条 -->
+  <rect x="60" y="1200" width="900" height="160" rx="8" fill="#fff7ed" stroke="#ea580c" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <text x="510" y="1232" text-anchor="middle" class="box-title" fill="#9a3412">A3 关键发现：一次认知翻转</text>
+  <text x="510" y="1262" text-anchor="middle" class="box-detail">create_react_agent(name, model, tools, prompt) 只接收 4 个参数</text>
+  <text x="510" y="1284" text-anchor="middle" class="code" fill="#9a3412">没有 steps / workflow / pipeline / sequence 等结构化执行参数</text>
+  <text x="510" y="1314" text-anchor="middle" class="conclusion" fill="#9a3412">→ SKILL.md 步骤通过 prompt 字符串注入</text>
+  <text x="510" y="1338" text-anchor="middle" class="conclusion" fill="#9a3412">→ Agent "听话" = LLM instruction following，不是硬编码调度</text>
+
+</svg>

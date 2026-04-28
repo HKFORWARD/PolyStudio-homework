@@ -13,7 +13,7 @@ from app.utils.logger import setup_logging
 from app.services.connection_manager import manager
 from app.services import workspace_service
 
-load_dotenv()
+load_dotenv(override=True)  # 让 backend/.env 覆盖 shell 已 export 的同名变量，避免外部环境污染项目配置
 
 # 初始化日志系统（在应用启动时配置）
 log_level = os.getenv("LOG_LEVEL", "INFO")
